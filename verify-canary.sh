@@ -7,9 +7,9 @@ IMAGE_PROD=$(kubectl get deployment novel-app \
 IMAGE_CANARY=$(kubectl get deployment novel-canary \
     -o jsonpath='{.spec.template.spec.containers[0].image}') || exit 1
 
-if [[ "$IMAGE_PROD" != "blentai/hands-on-k8s-canary:1.3" ||
-      "$IMAGE_CANARY" != "blentai/hands-on-k8s-canary:1.4" ]]; then
-    echo "ERREUR : les versions deployees ne correspondent pas au test 1.3 vers 1.4."
+if [[ "$IMAGE_PROD" != "blentai/hands-on-k8s-canary:1.4" ||
+      "$IMAGE_CANARY" != "blentai/hands-on-k8s-canary:1.5" ]]; then
+    echo "ERREUR : les versions deployees ne correspondent pas au test 1.4 vers 1.5."
     exit 1
 fi
 
@@ -77,8 +77,8 @@ ERROR_REQUETES_PROD=$(grep '\[default-novel-app-service-80\]' canary-logs.txt | 
 ERROR_REQUETES_CANARY=$(grep '\[default-novel-canary-service-80\]' canary-logs.txt | awk '$9 ~ /^[45][0-9][0-9]$/ {count++} END {print count+0}')
 
 # Afficher les resultats
-echo "Novel 1.3 : $TOTAL_REQUETES_PROD requetes, $ERROR_REQUETES_PROD erreurs"
-echo "Novel 1.4 : $TOTAL_REQUETES_CANARY requetes, $ERROR_REQUETES_CANARY erreurs"
+echo "Novel 1.4 : $TOTAL_REQUETES_PROD requetes, $ERROR_REQUETES_PROD erreurs"
+echo "Novel 1.5 : $TOTAL_REQUETES_CANARY requetes, $ERROR_REQUETES_CANARY erreurs"
 
 # Verifier que les deux versions ont recu des requetes
 if (( TOTAL_REQUETES_PROD == 0 || TOTAL_REQUETES_CANARY == 0 )); then
@@ -93,8 +93,8 @@ TAUX_REQUETES_PROD=$(awk -v errors="$ERROR_REQUETES_PROD" -v total="$TOTAL_REQUE
 TAUX_REQUETES_CANARY=$(awk -v errors="$ERROR_REQUETES_CANARY" -v total="$TOTAL_REQUETES_CANARY" \
     'BEGIN {printf "%.2f", (errors / total) * 100}')
 
-echo "Taux d'erreur Novel 1.3 : $TAUX_REQUETES_PROD %"
-echo "Taux d'erreur Novel 1.4 : $TAUX_REQUETES_CANARY %"
+echo "Taux d'erreur Novel 1.4 : $TAUX_REQUETES_PROD %"
+echo "Taux d'erreur Novel 1.5 : $TAUX_REQUETES_CANARY %"
 
 # Comparer les taux d'erreur
 if awk \
@@ -108,38 +108,38 @@ if awk \
         exit !(taux_canary <= taux_prod * 1.25)
     }'; then
 
-    echo "SUCCES : Canary 1.4 accepte."
-    echo "La nouvelle version peut remplacer la version 1.3."
+    echo "SUCCES : Canary 1.5 accepte."
+    echo "La nouvelle version peut remplacer la version 1.4."
 
-    # Mettre a jour la production vers Novel 1.4
+    # Mettre a jour la production vers Novel 1.5
     if ! kubectl set image deployment/novel-app \
-        backend=blentai/hands-on-k8s-canary:1.4; then
+        backend=blentai/hands-on-k8s-canary:1.5; then
 
-        echo "ERREUR : impossible de mettre a jour Novel vers 1.4."
+        echo "ERREUR : impossible de mettre a jour Novel vers 1.5."
         exit 1
     fi
 
     # Verifier que les nouveaux Pods sont prets
     if ! kubectl rollout status deployment/novel-app --timeout=120s; then
-        echo "ERREUR : les nouveaux Pods Novel 1.4 ne sont pas prets."
+        echo "ERREUR : les nouveaux Pods Novel 1.5 ne sont pas prets."
 
-        # Revenir a la version stable 1.3
+        # Revenir a la version stable 1.4
         if ! kubectl set image deployment/novel-app \
-            backend=blentai/hands-on-k8s-canary:1.3; then
-            echo "ERREUR : retour a Novel 1.3 impossible"
+            backend=blentai/hands-on-k8s-canary:1.4; then
+            echo "ERREUR : retour a Novel 1.4 impossible"
             exit 1
         fi
 
-        if ! kubectl rollout status deployement/novel-app -- timeout=120s; then
-            echo "ERREUR : le retour a Novel 1.3 a echoue."
+        if ! kubectl rollout status deployment/novel-app --timeout=120s; then
+            echo "ERREUR : le retour a Novel 1.4 a echoue."
             exit 1
         fi
 
-        echo "Retour a novel 1.3 effectue."
+        echo "Retour a novel 1.4 effectue."
         exit 1
     fi
 
-    echo "SUCCES : Novel 1.4 est deploye en production"
+    echo "SUCCES : Novel 1.5 est deploye en production"
 
     # Supprimer l ingress canary
     if ! kubectl delete ingress novel-canary-ingress; then
@@ -147,19 +147,19 @@ if awk \
         exit 1
     fi
 
-    #Supprimer le deployement et le service Canary
-    if ! kubectl delete deployment novel-canary service novel-canary-service; then
+    #Supprimer le deployment et le service Canary
+    if ! kubectl delete deployment/novel-canary service/novel-canary-service; then
          echo "ERREUR : impossible de supprimer les ressources Canary."
          exit 1
     fi
 
     echo "SUCCES : ressources Canary supprimees."
-    echo "Novel 1.4 est maintenant la version de production"
+    echo "Novel 1.5 est maintenant la version de production"
 
 
 else
-    echo "ECHEC : Canary 1.4 rejete."
-    echo "La version 1.3 doit etre conservee."
+    echo "ECHEC : Canary 1.5 rejete."
+    echo "La version 1.4 doit etre conservee."
 
     # Supprimer l ingress Canary
     if ! kubectl delete ingress novel-canary-ingress; then
@@ -174,5 +174,5 @@ else
     fi
 
     echo "SUCCES : Canary supprime."
-    echo "Novel 1.3 reste en production"
+    echo "Novel 1.4 reste en production"
 fi

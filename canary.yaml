@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: novel-canary
-          image: blentai/hands-on-k8s-canary:1.4
+          image: blentai/hands-on-k8s-canary:1.5
           ports:
             - containerPort: 3000
           resources:
