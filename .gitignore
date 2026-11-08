@@ -1,0 +1,11 @@
+# Logs
+nginx-logs.txt
+canary-logs.txt
+
+# Executable Kubernetes
+/kubectl
+
+# Fichiers sensibles
+.env
+*.pem
+*.key
